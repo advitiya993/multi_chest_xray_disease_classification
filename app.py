@@ -10,7 +10,7 @@ import io
 def load_model():
     model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet121', pretrained=False)
     model.classifier = nn.Linear(model.classifier.in_features, 3)
-    model.load_state_dict(torch.load("best_model_v2(1).pth", map_location="cpu"))
+    model.load_state_dict(torch.load("best_model_v2 (1).pth", map_location="cpu"))
     model.eval()
     return model
 
