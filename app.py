@@ -1,45 +1,67 @@
 import streamlit as st
-from PIL import Image
 import torch
 import torch.nn as nn
-from torchvision import transforms
-import io
+from torchvision import models, transforms
+from PIL import Image
 
-# ----------- Load Model -----------
+# ---------------------------
+# Load Model (Matches Training)
+# ---------------------------
 @st.cache_resource
 def load_model():
-    model = torch.hub.load('pytorch/vision:v0.10.0', 'densenet121', pretrained=False)
-    model.classifier = nn.Linear(model.classifier.in_features, 3)
-    model.load_state_dict(torch.load("best_model_v2 (1).pth", map_location="cpu"))
+    num_classes = 3  # <-- CHANGE if your project has different classes
+
+    # SAME architecture you used during training
+    model = models.densenet121(weights=models.DenseNet121_Weights.IMAGENET1K_V1)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    num_ftrs = model.classifier.in_features
+    model.classifier = nn.Linear(num_ftrs, num_classes)
+
+    # Load weights safely (handles DataParallel issues)
+    state_dict = torch.load("best_model_v2 (1).pth", map_location="cpu")
+
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        new_key = k.replace("module.", "")  # remove DataParallel prefix if present
+        new_state_dict[new_key] = v
+
+    model.load_state_dict(new_state_dict)
+
     model.eval()
     return model
 
+
 model = load_model()
 
-# ----------- Preprocess Image -----------
+# ---------------------------
+# Preprocessing
+# ---------------------------
 transform = transforms.Compose([
-    transforms.Resize((224,224)),
-    transforms.ToTensor()
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
 ])
 
-# ----------- UI -----------
-st.title("🩺 Disease Classification App")
-st.write("Upload an image to get the predicted label.")
+# ---------------------------
+# Streamlit UI
+# ---------------------------
+st.title("🩺 Chest X-Ray Disease Classification")
+st.write("Upload a chest X-ray image to predict disease class.")
 
-uploaded = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
+uploaded = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
     st.image(img, caption="Uploaded Image", use_column_width=True)
 
-    # Preprocess
     img_tensor = transform(img).unsqueeze(0)
 
-    # Predict
     with torch.no_grad():
-        pred = model(img_tensor)
-        label = torch.argmax(pred, dim=1).item()
+        output = model(img_tensor)
+        pred = torch.argmax(output, dim=1).item()
 
-    classes = ['Atelectasis', 'COVID', 'Cardiomegaly', 'Effusion', 'Mass', 'No_Finding']
-
-    st.success(f"Predicted Class: **{classes[label]}**")
+    # Your class names
+    classes = ["Class A", "Class B", "Class C"]
+    st.success(f"Prediction: **{classes[pred]}**")
