@@ -27,5 +27,3 @@ pip install -r requirements.txt
 ```powershell
 python app.py
 ```
-
-If you want, I can create a remote GitHub repository and push the initial commit. Let me know the repo name and whether it should be public or private.
